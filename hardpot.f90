@@ -26,11 +26,12 @@ real(kind=long), allocatable, dimension(:, :) :: Y, nY
 real(kind=long), dimension(6) :: X, nX, temp
 real(kind=long) :: square_distance, t_tot = 0, ac, bc, cc, tau, mcax, trunc_normal, rand_cerf, xi, ike,ake, &
 xmom, ymom, zmom
+logical :: psts = .TRUE.
 
 ! Defining the dummy variables we use for indexing
 
 integer :: ii, jj, kk, mm, nadd=0, nlost=0, qq, t
-character(len=1024) :: filename
+!character(len=1024) :: filename
 
 ! Initializing our system
 
@@ -41,7 +42,10 @@ length = nint(nsolv + 100*sqrt(real(nsolv)))
 allocate(Y(length, 7))
 allocate(nY(length, 7))
 
-print*, sigma
+!print*, sigma
+
+open( unit = 10, file = "particle_trajectory.csv")
+open( unit = 20, file = "nsolv.csv")
 
 do ii=1, nsolv
 
@@ -65,7 +69,7 @@ end do
 
 ! Looping until either a predetermined time or some logical condition is met
 
-do while(t_tot < 0.001)
+do while(psts)
 
 nX(1:3) = X(1:3) + X(4:6)*dt
 nx(4:6) = X(4:6)
@@ -89,8 +93,8 @@ do kk=1, length
 		bc = 2*dot_product(dv, dp)
 		cc = dot_product(dp, dp) - r**2
 		tau = (-bc - (bc**2 - 4*ac*cc)**0.5)/(2*ac)
-		print*, tau
-		print*, nadd-nlost
+		!print*, tau
+		!print*, nadd-nlost
 		! now calculate quantities needed for update rule
 		Xcol = X(1:3) + tau*X(4:6)
 		Ycol = Y(kk, 2:4) + tau*Y(kk, 5:7)
@@ -151,7 +155,7 @@ if (temp(1) < p_new) then
 	!print*, nloc, 1
 	!print*, int(sum(Y(:, 1)))
 	Y(nloc, :) = [real(kind=long):: 1, dt*sigma*xi*2**0.5, L*seed(1), L*seed(2), sigma*trunc_normal&
-		(sigma*xi*2**0.5), sigma*random_normal(), sigma*random_normal()]
+		(xi*2**0.5), sigma*random_normal(), sigma*random_normal()]
 	!print*, int(sum(Y(:, 1)))
 
 end if
@@ -164,7 +168,7 @@ if (temp(2) < p_new) then
 	!print*, nloc, 2
 	!print*, int(sum(Y(:, 1)))
 	Y(nloc, :) = [real(kind=long):: 1, L*seed(1), dt*sigma*xi*2**0.5, L*seed(2), sigma*random_normal(),&
-		sigma*trunc_normal(sigma*xi*2**0.5), sigma*random_normal()]
+		sigma*trunc_normal(xi*2**0.5), sigma*random_normal()]
 	!print*, int(sum(Y(:, 1)))
 end if
 
@@ -176,7 +180,7 @@ if (temp(3) < p_new) then
 	!print*, nloc, 3
 	!print*, int(sum(Y(:, 1)))
 	Y(nloc, :) = [real(kind=long):: 1, L*seed(1), L*seed(2), dt*sigma*xi*2**0.5, sigma*random_normal(),&
-	sigma*random_normal(), sigma*trunc_normal(sigma*xi*2**0.5)]
+	sigma*random_normal(), sigma*trunc_normal(xi*2**0.5)]
 	!print*, int(sum(Y(:, 1)))
 end if
 
@@ -188,7 +192,7 @@ if (temp(4) < p_new) then
 	!print*, nloc, 4
 	!print*, int(sum(Y(:, 1)))
 	Y(nloc, :) = [real(kind=long):: 1, L - dt*sigma*xi*2**0.5, L*seed(1), L*seed(2), -sigma*trunc_normal&
-		(sigma*xi*2**0.5), sigma*random_normal(), sigma*random_normal()]
+		(xi*2**0.5), sigma*random_normal(), sigma*random_normal()]
 	!print*, int(sum(Y(:, 1)))
 end if
 
@@ -200,7 +204,7 @@ if (temp(5) < p_new) then
 	!print*, nloc, 5
 	!print*, int(sum(Y(:, 1)))
 	Y(nloc, :) = [real(kind=long):: 1, L*seed(1), L-dt*sigma*xi*2**0.5, L*seed(2), sigma*random_normal(),&
-		-sigma*trunc_normal(sigma*xi*2**0.5), sigma*random_normal()]
+		-sigma*trunc_normal(xi*2**0.5), sigma*random_normal()]
 	!print*, int(sum(Y(:, 1)))
 end if
 
@@ -212,7 +216,7 @@ if (temp(6) < p_new) then
 	!print*, nloc, 6
 	!print*, int(sum(Y(:, 1)))
 	Y(nloc, :) = [real(kind=long):: 1, L*seed(1), L*seed(2), L-dt*sigma*xi*2**0.5, sigma*random_normal(),&
-	sigma*random_normal(), -sigma*trunc_normal(sigma*xi*2**0.5)]
+	sigma*random_normal(), -sigma*trunc_normal(xi*2**0.5)]
 	!print*, int(sum(Y(:, 1)))
 end if
 
@@ -222,12 +226,18 @@ t_tot = t_tot + dt
 !print*, nsolv -nlost + nadd - int(sum(Y(:, 1)))
 
 ! if (mod(nint(t_tot/dt), 100)==0) then
-! write(filename,"(A14,I0.3)") "solvent",nint(t_tot/dt)
+!write(filename,"(A14,I0.3)") "solvent",nint(t_tot/dt)
 ! open(unit=1, file=filename, status='replace')
 ! do qq=1, 10000
 	! write(1, *) (Y(qq, t), ",", t=1, 7)
 ! end do
 ! end if
+
+write(10, *) (X(t), ",", t=1, 6)
+write(20, *) (int(sum(Y(:,1))))
+if (minval(X(1:3)) < r .OR. maxval(X(1:3)) > L-r) then
+psts = .FALSE.
+end if
 
 end do
 
